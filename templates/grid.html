@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+{% block title %}EirGrid — Energy Dashboard{% endblock %}
+{% block breadcrumb %}EirGrid{% endblock %}
+
+{% block content %}
+
+<div class="page-title-row">
+    <div>
+        <div class="page-title">EirGrid</div>
+        <div class="page-subtitle">MW — EirGrid Smart Grid Dashboard</div>
+    </div>
+    <div class="controls-row">
+        <span class="control-label">Range</span>
+        <div class="seg-group" id="range-selector">
+            <button class="seg-btn active" data-range="day">Day</button>
+            <button class="seg-btn" data-range="week">Week</button>
+            <button class="seg-btn" data-range="month">Month</button>
+            <button class="seg-btn" data-range="custom">Custom</button>
+        </div>
+        <div id="custom-range" style="display:none;align-items:center;gap:6px;">
+            <input type="date" id="date-from"
+                   style="font-family:inherit;font-size:11.5px;padding:5px 10px;
+                          border:1px solid #e2e5ec;border-radius:5px;
+                          background:#f0f2f5;color:#1a1d23;cursor:pointer;">
+            <span style="color:#9ca3af;font-size:11px;">to</span>
+            <input type="date" id="date-to"
+                   style="font-family:inherit;font-size:11.5px;padding:5px 10px;
+                          border:1px solid #e2e5ec;border-radius:5px;
+                          background:#f0f2f5;color:#1a1d23;cursor:pointer;">
+            <button id="apply-custom" class="seg-btn active" style="border-radius:5px;">Apply</button>
+        </div>
+        <div id="day-picker-wrap" style="display:flex;align-items:center;gap:6px;">
+            <button id="day-prev" class="seg-btn" style="border-radius:5px;padding:5px 9px;">&#8592;</button>
+            <input type="date" id="date-picker"
+                   style="font-family:inherit;font-size:11.5px;padding:5px 10px;
+                          border:1px solid #e2e5ec;border-radius:5px;
+                          background:#f0f2f5;color:#1a1d23;cursor:pointer;">
+            <button id="day-next" class="seg-btn" style="border-radius:5px;padding:5px 9px;">&#8594;</button>
+        </div>
+    </div>
+</div>
+
+<!-- KPI row -->
+<div class="stats-grid" id="kpi-row" style="border-radius:6px;border:1px solid #e2e5ec;">
+    <div class="stat-card">
+        <div class="stat-zone">System Demand</div>
+        <div class="stat-last" id="kpi-demand-val">—<span>MW</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-demand-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-demand-min">—</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-zone">Wind Generation</div>
+        <div class="stat-last" id="kpi-wind-val">—<span>MW</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-wind-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-wind-min">—</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-zone">Solar Generation</div>
+        <div class="stat-last" id="kpi-solar-val">—<span>MW</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-solar-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-solar-min">—</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-zone">Wind Penetration</div>
+        <div class="stat-last" id="kpi-pen-val">—<span>%</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-pen-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-pen-min">—</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-zone">Total Generation</div>
+        <div class="stat-last" id="kpi-gen-val">—<span>MW</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-gen-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-gen-min">—</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-zone">Imbalance Price</div>
+        <div class="stat-last" id="kpi-imbprice-val">—<span>€/MWh</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-imbprice-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-imbprice-min">—</span></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-zone">Net Imbalance Vol.</div>
+        <div class="stat-last" id="kpi-imbvol-val">—<span>MWh</span></div>
+        <div class="stat-rows">
+            <div class="stat-row"><span class="stat-row-label">Peak</span><span class="stat-row-value" id="kpi-imbvol-peak">—</span></div>
+            <div class="stat-row"><span class="stat-row-label">Min</span><span class="stat-row-value" id="kpi-imbvol-min">—</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Fuel mix + Wind row -->
+<div style="display:grid;grid-template-columns:340px 1fr;gap:16px;">
+    <div class="card" style="margin:0;">
+        <div class="card-header">
+            <div class="card-title">Fuel Mix — Current Snapshot</div>
+            <div id="fuel-timestamp" style="font-size:11px;color:#9ca3af;"></div>
+        </div>
+        <div id="fuel-pie" style="height:280px;"></div>
+        <div id="fuel-legend" style="padding:0 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;"></div>
+    </div>
+    <div class="card" style="margin:0;">
+        <div class="card-header">
+            <div class="card-title">Wind — Actual vs Forecast</div>
+        </div>
+        <div class="chart-wrap"><div id="wind-chart" style="height:300px;"></div></div>
+    </div>
+</div>
+
+<!-- Solar chart -->
+<div class="card">
+    <div class="card-header"><div class="card-title">Solar — Actual vs Forecast</div></div>
+    <div class="chart-wrap"><div id="solar-chart" style="height:300px;"></div></div>
+</div>
+
+<!-- Demand chart -->
+<div class="card">
+    <div class="card-header"><div class="card-title">System Demand (MW)</div></div>
+    <div class="chart-wrap"><div id="demand-chart" style="height:300px;"></div></div>
+</div>
+
+<!-- Generation chart -->
+<div class="card">
+    <div class="card-header"><div class="card-title">Total Generation &amp; Wind Penetration (MW)</div></div>
+    <div class="chart-wrap"><div id="gen-chart" style="height:300px;"></div></div>
+</div>
+
+<!-- Frequency chart -->
+<div class="card">
+    <div class="card-header"><div class="card-title">System Frequency (Hz)</div></div>
+    <div class="chart-wrap"><div id="freq-chart" style="height:260px;"></div></div>
+</div>
+
+<!-- Imbalance Price chart -->
+<div class="card">
+    <div class="card-header"><div class="card-title">Imbalance Settlement Price (€/MWh)</div></div>
+    <div class="chart-wrap"><div id="imbprice-chart" style="height:260px;"></div></div>
+</div>
+
+<!-- Imbalance Volume chart -->
+<div class="card">
+    <div class="card-header"><div class="card-title">Net Imbalance Volume (MWh)</div></div>
+    <div class="chart-wrap"><div id="imbvol-chart" style="height:260px;"></div></div>
+</div>
+
+<script>
+const COLOURS = {
+    windActual:   "#2563eb",
+    windFcast:    "#93c5fd",
+    solarActual:  "#f59e0b",
+    solarFcast:   "#fde68a",
+    demandActual: "#dc2626",
+    demandFcast:  "#fca5a5",
+    gen:          "#16a34a",
+    snspMW:       "#7c3aed",
+    freq:         "#0891b2",
+    imbPrice:     "#7c3aed",
+};
+
+const FUEL_COLOURS = {
+    FUEL_RENEW:        "#16a34a",
+    FUEL_GAS:          "#f59e0b",
+    FUEL_NET_IMPORT:   "#2563eb",
+    FUEL_OTHER_FOSSIL: "#6b7280",
+    FUEL_COAL:         "#1a1d23",
+};
+
+const FUEL_LABELS = {
+    FUEL_RENEW:        "Renewables",
+    FUEL_GAS:          "Gas",
+    FUEL_NET_IMPORT:   "Net Import",
+    FUEL_OTHER_FOSSIL: "Other Fossil",
+    FUEL_COAL:         "Coal",
+};
+
+const today = new Date().toISOString().slice(0, 10);
+let currentRange = "day";
+let fromDate = today;
+let toDate   = today;
+
+function addDays(iso, n) {
+    const d = new Date(iso);
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+}
+
+function spanDays(from, to) {
+    return Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+}
+
+/*
+ * Convert EirGrid timestamp strings "DD-Mon-YYYY HH:MM:SS" into
+ * custom tick labels without using Plotly's date axis at all.
+ * We use a categorical-style approach: pass x as the original strings
+ * but build tickvals/ticktext manually so we control exactly what shows.
+ *
+ * For 1 day  → tick every 2 h, label "HH:MM"
+ * For 2-7 d  → tick every 6 h, midnight gets "DD Mon\n00:00", others "HH:MM"
+ * For 8-31 d → tick every 24 h (midnight only), label "DD Mon"
+ */
+function buildTicks(xs, from, to) {
+    const days = spanDays(from, to);
+
+    // Parse "DD-Mon-YYYY HH:MM:SS" → { h, m, isFirst }
+    // We'll pick ticks by index where the time matches our interval
+    let intervalH;
+    if      (days <= 1)  intervalH = 2;
+    else if (days <= 3)  intervalH = 6;
+    else if (days <= 7)  intervalH = 12;
+    else if (days <= 14) intervalH = 24;
+    else                 intervalH = 24;
+
+    const MONTHS = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,
+                    Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+
+    const tickvals = [], ticktext = [];
+
+    xs.forEach(x => {
+        // "12-Jun-2026 02:00:00"
+        const parts = x.split(" ");
+        const dp    = parts[0].split("-");   // ["12","Jun","2026"]
+        const tp    = parts[1].split(":");   // ["02","00","00"]
+        const h     = parseInt(tp[0], 10);
+        const m     = parseInt(tp[1], 10);
+        const day   = parseInt(dp[0], 10);
+        const mon   = dp[1];
+
+        if (m !== 0) return;                 // only on the hour
+        if (h % intervalH !== 0) return;     // only at our interval
+
+        tickvals.push(x);
+
+        if (days <= 1) {
+            // pure time
+            ticktext.push(`${tp[0]}:${tp[1]}`);
+        } else if (days <= 7) {
+            // midnight gets date label, others get time
+            if (h === 0) {
+                ticktext.push(`${day} ${mon}<br>00:00`);
+            } else {
+                ticktext.push(`${tp[0]}:${tp[1]}`);
+            }
+        } else {
+            // midnight only → just date
+            if (h === 0) {
+                ticktext.push(`${day} ${mon}`);
+            }
+            // non-midnight already filtered by intervalH=24 so won't reach here
+        }
+    });
+
+    return { tickvals, ticktext };
+}
+
+function baseLayout(yTitle, ticks, extra) {
+    return Object.assign({
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor:  "#ffffff",
+        font: { family: "Inter, system-ui", size: 11, color: "#6b7280" },
+        xaxis: {
+            type: "category",
+            gridcolor: "#f0f2f5",
+            linecolor: "#e2e5ec",
+            tickfont:  { size: 10.5 },
+            showgrid:  true,
+            zeroline:  false,
+            tickvals:  ticks.tickvals,
+            ticktext:  ticks.ticktext,
+            tickangle: 0,
+        },
+        yaxis: {
+            title: { text: yTitle, font: { size: 11 }, standoff: 10 },
+            gridcolor: "#f0f2f5", linecolor: "#e2e5ec",
+            tickfont: { size: 10.5 }, zeroline: false,
+        },
+        legend: {
+            bgcolor: "#ffffff", bordercolor: "#e2e5ec", borderwidth: 1,
+            font: { size: 11 }, orientation: "h", y: -0.18, x: 0,
+        },
+        margin: { t: 12, r: 16, b: 60, l: 64 },
+        hovermode: "x unified",
+        hoverlabel: {
+            bgcolor: "#0f1117", bordercolor: "#0f1117",
+            font: { color: "#ffffff", size: 11, family: "Inter, system-ui" },
+        },
+    }, extra || {});
+}
+
+function rowsToXY(rows, fieldName) {
+    const filtered = rows.filter(r => r.FieldName === fieldName && r.Value !== null);
+    return {
+        x: filtered.map(r => r.EffectiveTime),
+        y: filtered.map(r => r.Value),
+    };
+}
+
+function kpiUpdate(valId, peakId, minId, values, unit, decimals) {
+    decimals = decimals === undefined ? 0 : decimals;
+    const valid = values.filter(v => v !== null && !isNaN(v));
+    if (!valid.length) return;
+    const last = valid[valid.length - 1];
+    const peak = Math.max(...valid);
+    const min  = Math.min(...valid);
+    const fmt  = v => decimals > 0 ? v.toFixed(decimals) : Math.round(v).toLocaleString();
+    document.getElementById(valId).innerHTML    = `${unit === "%" ? last.toFixed(1) : fmt(last)}<span>${unit}</span>`;
+    document.getElementById(peakId).textContent = unit === "%" ? peak.toFixed(1) + "%" : fmt(peak);
+    document.getElementById(minId).textContent  = unit === "%" ? min.toFixed(1)  + "%" : fmt(min);
+}
+
+function penetrationKpi(windXY, demandXY) {
+    const demandMap = {};
+    demandXY.x.forEach((t, i) => { demandMap[t] = demandXY.y[i]; });
+    const pcts = windXY.x.map((t, i) => {
+        const d = demandMap[t];
+        return (d && d > 0) ? (windXY.y[i] / d * 100) : null;
+    }).filter(v => v !== null);
+    if (!pcts.length) return;
+    const last = pcts[pcts.length - 1];
+    const peak = Math.max(...pcts);
+    const min  = Math.min(...pcts);
+    document.getElementById("kpi-pen-val").innerHTML    = `${last.toFixed(1)}<span>%</span>`;
+    document.getElementById("kpi-pen-peak").textContent = peak.toFixed(1) + "%";
+    document.getElementById("kpi-pen-min").textContent  = min.toFixed(1)  + "%";
+}
+
+async function loadFuelMix() {
+    try {
+        const resp = await fetch(`/api/grid?date=${today}`);
+        const json = await resp.json();
+        const rows = json.data.fuelmix || [];
+        if (!rows.length) return;
+
+        const order = ["FUEL_RENEW","FUEL_GAS","FUEL_NET_IMPORT","FUEL_OTHER_FOSSIL","FUEL_COAL"];
+        const values = [], labels = [], colors = [];
+        let total = 0;
+        const dataMap = {};
+        rows.forEach(r => { dataMap[r.FieldName] = r.Value; });
+        order.forEach(k => { total += (dataMap[k] || 0); });
+        order.forEach(k => {
+            const v = dataMap[k] || 0;
+            if (v <= 0) return;
+            values.push(v); labels.push(FUEL_LABELS[k]); colors.push(FUEL_COLOURS[k]);
+        });
+
+        document.getElementById("fuel-timestamp").textContent = `as of ${rows[0].EffectiveTime}`;
+
+        Plotly.newPlot("fuel-pie", [{
+            type: "pie", values, labels,
+            marker: { colors, line: { color: "#ffffff", width: 2 } },
+            textinfo: "none",
+            hovertemplate: "<b>%{label}</b><br>%{value:,.0f} MWh<br>%{percent}<extra></extra>",
+            hole: 0.62, direction: "clockwise", sort: false,
+        }], {
+            paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff",
+            font: { family: "Inter, system-ui", size: 11, color: "#6b7280" },
+            margin: { t: 8, r: 8, b: 8, l: 8 }, showlegend: false,
+            annotations: [{
+                text: `<b>${(values.reduce((a,b)=>a+b,0)/1000).toFixed(1)}</b><br>GWh`,
+                x: 0.5, y: 0.5, xref: "paper", yref: "paper",
+                showarrow: false,
+                font: { size: 15, color: "#1a1d23", family: "Inter, system-ui" },
+                align: "center",
+            }],
+        }, { responsive: true, displayModeBar: false });
+
+        const legend = document.getElementById("fuel-legend");
+        legend.innerHTML = "";
+        order.forEach(k => {
+            const v = dataMap[k] || 0;
+            if (v <= 0) return;
+            const pct = (v / total * 100).toFixed(1);
+            legend.innerHTML += `
+                <div style="display:flex;align-items:center;gap:7px;padding:3px 0;">
+                    <div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${FUEL_COLOURS[k]};"></div>
+                    <span style="font-size:11.5px;color:#374151;flex:1;">${FUEL_LABELS[k]}</span>
+                    <span style="font-size:11.5px;color:#6b7280;font-variant-numeric:tabular-nums;">${pct}%</span>
+                </div>`;
+        });
+    } catch(e) { console.error("fuel mix error", e); }
+}
+
+async function fetchRange(from, to) {
+    const days = [];
+    let cur = from;
+    while (cur <= to) { days.push(cur); cur = addDays(cur, 1); }
+    const results = await Promise.all(days.map(d =>
+        fetch(`/api/grid?date=${d}`).then(r => r.json()).catch(() => null)
+    ));
+    const merged = { wind:[], demand:[], generation:[], solar:[], frequency:[], imbalance:[] };
+    for (const res of results) {
+        if (!res) continue;
+        merged.wind       = merged.wind.concat(res.data.wind        || []);
+        merged.demand     = merged.demand.concat(res.data.demand     || []);
+        merged.generation = merged.generation.concat(res.data.generation || []);
+        merged.solar      = merged.solar.concat(res.data.solar       || []);
+        merged.frequency  = merged.frequency.concat(res.data.frequency  || []);
+        merged.imbalance  = merged.imbalance.concat(res.data.imbalance  || []);
+    }
+    return merged;
+}
+
+async function loadGrid() {
+    const data = await fetchRange(fromDate, toDate);
+
+    const windActual   = rowsToXY(data.wind,      "WIND_ACTUAL");
+    const windFcast    = rowsToXY(data.wind,       "WIND_FCAST");
+    const solarActual  = rowsToXY(data.solar,      "SOLAR_ACTUAL");
+    const solarFcast   = rowsToXY(data.solar,      "SOLAR_FCAST");
+    const demandActual = rowsToXY(data.demand,     "SYSTEM_DEMAND");
+    const genActual    = rowsToXY(data.generation, "GEN_EXP");
+    const freqActual   = rowsToXY(data.frequency,  "SYS_FREQUENCY");
+    const imbPrice     = rowsToXY(data.imbalance,  "IMBALANCE_SETTLEMENT_PRICE");
+    const imbVol       = rowsToXY(data.imbalance,  "NET_IMBALANCE_VOLUME");
+
+    // Build ticks once from the densest series (wind actual)
+    const ticks = buildTicks(windActual.x, fromDate, toDate);
+    // For imbalance (30-min data) build separate ticks
+    const ticksImb = buildTicks(imbPrice.x, fromDate, toDate);
+    // For frequency (1-min data) reuse wind ticks
+    const ticksFreq = buildTicks(freqActual.x, fromDate, toDate);
+
+    const demandMap = {};
+    demandActual.x.forEach((t, i) => { demandMap[t] = demandActual.y[i]; });
+    const snspMW_y = windActual.x.map((t, i) => {
+        const d = demandMap[t];
+        const gi = genActual.x.indexOf(t);
+        const g = gi >= 0 ? genActual.y[gi] : null;
+        return (d && d > 0 && g != null) ? (windActual.y[i] / d) * g : null;
+    });
+
+    const cfg = { responsive: true, displayModeBar: false };
+
+    const layout     = baseLayout("MW",     ticks);
+    const layoutFreq = baseLayout("Hz",     ticksFreq, {
+        yaxis: {
+            title: { text: "Hz", font: { size: 11 }, standoff: 10 },
+            gridcolor: "#f0f2f5", linecolor: "#e2e5ec",
+            tickfont: { size: 10.5 }, zeroline: false,
+            range: [49.7, 50.3],
+        },
+        shapes: [
+            { type: "line", x0: 0, x1: 1, xref: "paper", y0: 50,   y1: 50,
+              line: { color: "#6b7280", width: 1, dash: "dot" } },
+            { type: "line", x0: 0, x1: 1, xref: "paper", y0: 49.8, y1: 49.8,
+              line: { color: "#dc2626", width: 1, dash: "dash" } },
+            { type: "line", x0: 0, x1: 1, xref: "paper", y0: 50.2, y1: 50.2,
+              line: { color: "#dc2626", width: 1, dash: "dash" } },
+        ],
+    });
+    const layoutImbPrice = baseLayout("€/MWh", ticksImb, {
+        yaxis: {
+            title: { text: "€/MWh", font: { size: 11 }, standoff: 10 },
+            gridcolor: "#f0f2f5", linecolor: "#e2e5ec",
+            tickfont: { size: 10.5 }, zeroline: false,
+        },
+        shapes: [{
+            type: "line", x0: 0, x1: 1, xref: "paper", y0: 0, y1: 0,
+            line: { color: "#6b7280", width: 1, dash: "dot" },
+        }],
+    });
+    const layoutImbVol = baseLayout("MWh", ticksImb, {
+        yaxis: {
+            title: { text: "MWh", font: { size: 11 }, standoff: 10 },
+            gridcolor: "#f0f2f5", linecolor: "#e2e5ec",
+            tickfont: { size: 10.5 },
+            zeroline: true, zerolinecolor: "#6b7280", zerolinewidth: 1,
+        },
+    });
+
+    Plotly.newPlot("wind-chart", [
+        { ...windFcast,  name: "Forecast", type: "scatter", mode: "lines",
+          line: { color: COLOURS.windFcast, width: 1.5, dash: "dot" },
+          hovertemplate: "<b>Forecast</b> %{y:.0f} MW<extra></extra>" },
+        { ...windActual, name: "Actual",   type: "scatter", mode: "lines",
+          line: { color: COLOURS.windActual, width: 2 },
+          hovertemplate: "<b>Actual</b> %{y:.0f} MW<extra></extra>" },
+    ], layout, cfg);
+
+    Plotly.newPlot("solar-chart", [
+        { ...solarFcast,  name: "Forecast", type: "scatter", mode: "lines",
+          line: { color: COLOURS.solarFcast, width: 1.5, dash: "dot" },
+          hovertemplate: "<b>Forecast</b> %{y:.0f} MW<extra></extra>" },
+        { ...solarActual, name: "Actual",   type: "scatter", mode: "lines",
+          fill: "tozeroy", fillcolor: "rgba(245,158,11,0.08)",
+          line: { color: COLOURS.solarActual, width: 2 },
+          hovertemplate: "<b>Actual</b> %{y:.0f} MW<extra></extra>" },
+    ], layout, cfg);
+
+    Plotly.newPlot("demand-chart", [
+        { ...demandActual, name: "Demand", type: "scatter", mode: "lines",
+          fill: "tozeroy", fillcolor: "rgba(220,38,38,0.07)",
+          line: { color: COLOURS.demandActual, width: 2 },
+          hovertemplate: "<b>Demand</b> %{y:.0f} MW<extra></extra>" },
+    ], layout, cfg);
+
+    Plotly.newPlot("gen-chart", [
+        { ...genActual, name: "Generation", type: "scatter", mode: "lines",
+          fill: "tozeroy", fillcolor: "rgba(22,163,74,0.08)",
+          line: { color: COLOURS.gen, width: 2 },
+          hovertemplate: "<b>Generation</b> %{y:.0f} MW<extra></extra>" },
+        { x: windActual.x, y: snspMW_y, name: "Wind Penetration (MW equiv.)",
+          type: "scatter", mode: "lines",
+          line: { color: COLOURS.snspMW, width: 1.5, dash: "dot" },
+          hovertemplate: "<b>Wind Pen. MW</b> %{y:.0f}<extra></extra>" },
+    ], layout, cfg);
+
+    Plotly.newPlot("freq-chart", [
+        { ...freqActual, name: "Frequency", type: "scatter", mode: "lines",
+          line: { color: COLOURS.freq, width: 1 },
+          hovertemplate: "<b>Freq</b> %{y:.3f} Hz<extra></extra>" },
+    ], layoutFreq, cfg);
+
+    Plotly.newPlot("imbprice-chart", [
+        { ...imbPrice, name: "Imbalance Settlement Price",
+          type: "scatter", mode: "lines+markers",
+          line:   { color: COLOURS.imbPrice, width: 2 },
+          marker: { size: 4, color: COLOURS.imbPrice },
+          hovertemplate: "<b>Imbalance Price</b> €%{y:.2f}/MWh<extra></extra>" },
+    ], layoutImbPrice, cfg);
+
+    Plotly.newPlot("imbvol-chart", [
+        { ...imbVol, name: "Net Imbalance Volume", type: "bar",
+          marker: {
+              color: imbVol.y.map(v => v >= 0 ? "rgba(124,58,237,0.7)" : "rgba(220,38,38,0.7)"),
+              line:  { color: imbVol.y.map(v => v >= 0 ? "#7c3aed" : "#dc2626"), width: 1 },
+          },
+          hovertemplate: "<b>NIV</b> %{y:.1f} MWh<extra></extra>" },
+    ], layoutImbVol, cfg);
+
+    kpiUpdate("kpi-demand-val",   "kpi-demand-peak",   "kpi-demand-min",   demandActual.y, "MW");
+    kpiUpdate("kpi-wind-val",     "kpi-wind-peak",     "kpi-wind-min",     windActual.y,   "MW");
+    kpiUpdate("kpi-solar-val",    "kpi-solar-peak",    "kpi-solar-min",    solarActual.y,  "MW");
+    kpiUpdate("kpi-gen-val",      "kpi-gen-peak",      "kpi-gen-min",      genActual.y,    "MW");
+    kpiUpdate("kpi-imbprice-val", "kpi-imbprice-peak", "kpi-imbprice-min", imbPrice.y,     "€/MWh", 2);
+    kpiUpdate("kpi-imbvol-val",   "kpi-imbvol-peak",   "kpi-imbvol-min",   imbVol.y,       "MWh",   1);
+    penetrationKpi(windActual, demandActual);
+}
+
+// ── Range selector ──
+document.getElementById("range-selector").addEventListener("click", e => {
+    const btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    document.querySelectorAll("#range-selector .seg-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentRange = btn.dataset.range;
+
+    const dayWrap    = document.getElementById("day-picker-wrap");
+    const customWrap = document.getElementById("custom-range");
+
+    if (currentRange === "custom") {
+        dayWrap.style.display    = "none";
+        customWrap.style.display = "flex";
+        return;
+    }
+
+    dayWrap.style.display    = "flex";
+    customWrap.style.display = "none";
+
+    if      (currentRange === "day")   { fromDate = today; toDate = today; }
+    else if (currentRange === "week")  { fromDate = addDays(today, -6);  toDate = today; }
+    else if (currentRange === "month") { fromDate = addDays(today, -29); toDate = today; }
+
+    document.getElementById("date-picker").value = toDate;
+    loadGrid();
+});
+
+// ── Day picker ──
+const picker = document.getElementById("date-picker");
+picker.value = today;
+picker.max   = today;
+picker.addEventListener("change", () => {
+    if (!picker.value) return;
+    fromDate = picker.value; toDate = picker.value;
+    loadGrid();
+});
+
+document.getElementById("day-prev").addEventListener("click", () => {
+    const cur = picker.value || today;
+    picker.value = addDays(cur, -1);
+    fromDate = picker.value; toDate = picker.value;
+    loadGrid();
+});
+
+document.getElementById("day-next").addEventListener("click", () => {
+    const cur  = picker.value || today;
+    const next = addDays(cur, 1);
+    if (next <= today) {
+        picker.value = next;
+        fromDate = next; toDate = next;
+        loadGrid();
+    }
+});
+
+// ── Custom range ──
+const dateFrom = document.getElementById("date-from");
+const dateTo   = document.getElementById("date-to");
+dateFrom.max   = today;
+dateTo.max     = today;
+dateFrom.value = addDays(today, -6);
+dateTo.value   = today;
+
+document.getElementById("apply-custom").addEventListener("click", () => {
+    if (!dateFrom.value || !dateTo.value) return;
+    fromDate = dateFrom.value;
+    toDate   = dateTo.value <= today ? dateTo.value : today;
+    loadGrid();
+});
+
+loadGrid();
+loadFuelMix();
+</script>
+{% endblock %}

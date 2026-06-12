@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Day-Ahead Prices — Energy Dashboard{% endblock %}
+{% block breadcrumb %}Day-Ahead Prices{% endblock %}
+
+{% block content %}
+
+<div class="page-title-row">
+    <div>
+        <div class="page-title">Day-Ahead Prices</div>
+        <div class="page-subtitle">EUR/MWh — ENTSO-E Transparency Platform</div>
+    </div>
+    <div class="controls-row">
+        <span class="control-label">Period</span>
+        <div class="seg-group" id="days-selector">
+            <button class="seg-btn" data-days="1">1D</button>
+            <button class="seg-btn active" data-days="3">3D</button>
+            <button class="seg-btn" data-days="7">7D</button>
+            <button class="seg-btn" data-days="14">14D</button>
+            <button class="seg-btn" data-days="30">30D</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Bidding Zones</div>
+    </div>
+    <div class="card-body">
+        <div class="zone-grid" id="zone-toggles">
+            {% for zone in zones %}
+            <button class="zone-btn {% if zone in default_zones %}active{% endif %}"
+                    data-zone="{{ zone }}">{{ zone }}</button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Price History</div>
+        <div id="chart-meta" style="font-size:11px;color:#9ca3af;"></div>
+    </div>
+    <div class="chart-wrap">
+        <div id="price-chart" style="height:440px;"></div>
+    </div>
+</div>
+
+<div id="stats-wrap"></div>
+
+<script>
+const ALL_ZONES = {{ zones | tojson }};
+let selectedZones = {{ default_zones | tojson }};
+let selectedDays = 3;
+
+const PALETTE = [
+    "#2563eb","#dc2626","#16a34a","#d97706","#7c3aed",
+    "#0891b2","#be185d","#65a30d","#ea580c","#4338ca",
+    "#0f766e","#b45309","#9333ea","#0284c7","#15803d",
+    "#c2410c","#1d4ed8","#b91c1c","#047857","#92400e",
+    "#6d28d9","#0e7490","#9d174d","#3f6212","#7e22ce",
+    "#075985","#166534","#92400e","#1e3a5f","#4a1942",
+    "#134e4a","#1e1b4b","#450a0a","#052e16","#1c1917",
+];
+
+const zoneColour = {};
+ALL_ZONES.forEach((z, i) => { zoneColour[z] = PALETTE[i % PALETTE.length]; });
+
+async function loadChart() {
+    const statsEl = document.getElementById("stats-wrap");
+
+    if (selectedZones.length === 0) {
+        document.getElementById("price-chart").innerHTML =
+            '<div class="empty-state">Select one or more bidding zones.</div>';
+        statsEl.innerHTML = "";
+        return;
+    }
+
+    const params = new URLSearchParams({
+        zones: selectedZones.join(","),
+        days:  selectedDays,
+    });
+
+    let data;
+    try {
+        const res = await fetch(`/api/prices?${params}`);
+        data = await res.json();
+    } catch(e) {
+        console.error("Fetch failed:", e);
+        return;
+    }
+
+    if (data.error) { console.error(data.error); return; }
+
+    const traces = selectedZones.map(zone => {
+        const zd = data[zone] || { times: [], prices: [] };
+        return {
+            x:    zd.times,
+            y:    zd.prices,
+            name: zone,
+            type: "scatter",
+            mode: "lines",
+            line: { color: zoneColour[zone], width: 1.5 },
+            hovertemplate: `<b>${zone}</b>  %{y:.2f} EUR/MWh<extra></extra>`,
+        };
+    });
+
+    const layout = {
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor:  "#ffffff",
+        font: { family: "Inter, system-ui", size: 11, color: "#6b7280" },
+        xaxis: {
+            gridcolor:   "#f0f2f5",
+            linecolor:   "#e2e5ec",
+            tickformat:  selectedDays <= 3 ? "%d %b %H:%M" : "%d %b",
+            tickfont:    { size: 10.5 },
+            showgrid:    true,
+            zeroline:    false,
+        },
+        yaxis: {
+            title:        { text: "EUR/MWh", font: { size: 11 }, standoff: 10 },
+            gridcolor:    "#f0f2f5",
+            linecolor:    "#e2e5ec",
+            tickfont:     { size: 10.5 },
+            zeroline:     true,
+            zerolinecolor:"#e2e5ec",
+            zerolinewidth: 1,
+        },
+        legend: {
+            bgcolor:     "#ffffff",
+            bordercolor: "#e2e5ec",
+            borderwidth: 1,
+            font:        { size: 11 },
+            orientation: "h",
+            y:           -0.12,
+            x:           0,
+        },
+        margin:    { t: 12, r: 16, b: 60, l: 64 },
+        hovermode: "x unified",
+        hoverlabel: {
+            bgcolor:     "#0f1117",
+            bordercolor: "#0f1117",
+            font:        { color: "#ffffff", size: 11, family: "Inter, system-ui" },
+        },
+    };
+
+    Plotly.purge("price-chart");
+    Plotly.newPlot("price-chart", traces, layout, {
+        responsive:     true,
+        displayModeBar: false,
+    });
+
+    // Update meta
+    const allTimes = Object.values(data).flatMap(d => d.times || []);
+    if (allTimes.length) {
+        const latest = allTimes[allTimes.length - 1]
+            .replace("T", " ").replace("Z", " UTC");
+        document.getElementById("chart-meta").textContent = `Last update: ${latest}`;
+    }
+
+    // Stats cards
+    const cards = selectedZones.map(zone => {
+        const zd     = data[zone] || {};
+        const prices = (zd.prices || []).filter(p => p !== null && !isNaN(p));
+        if (!prices.length) return "";
+        const avg  = prices.reduce((a, b) => a + b, 0) / prices.length;
+        const min  = Math.min(...prices);
+        const max  = Math.max(...prices);
+        const last = prices[prices.length - 1];
+        const col  = zoneColour[zone];
+        return `
+        <div class="stat-card">
+            <div class="stat-zone">
+                <span class="stat-zone-dot" style="background:${col}"></span>
+                ${zone}
+            </div>
+            <div class="stat-last">${last.toFixed(2)}<span>EUR/MWh</span></div>
+            <div class="stat-rows">
+                <div class="stat-row">
+                    <span class="stat-row-label">Average</span>
+                    <span class="stat-row-value">${avg.toFixed(2)}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-row-label">Low</span>
+                    <span class="stat-row-value">${min.toFixed(2)}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-row-label">High</span>
+                    <span class="stat-row-value">${max.toFixed(2)}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join("");
+
+    statsEl.innerHTML = cards
+        ? `<div class="card"><div class="stats-grid">${cards}</div></div>`
+        : "";
+}
+
+document.getElementById("zone-toggles").addEventListener("click", e => {
+    const btn = e.target.closest(".zone-btn");
+    if (!btn) return;
+    const zone = btn.dataset.zone;
+    if (selectedZones.includes(zone)) {
+        selectedZones = selectedZones.filter(z => z !== zone);
+        btn.classList.remove("active");
+    } else {
+        selectedZones.push(zone);
+        btn.classList.add("active");
+    }
+    loadChart();
+});
+
+document.getElementById("days-selector").addEventListener("click", e => {
+    const btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    document.querySelectorAll("#days-selector .seg-btn")
+        .forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedDays = parseInt(btn.dataset.days);
+    loadChart();
+});
+
+loadChart();
+</script>
+{% endblock %}

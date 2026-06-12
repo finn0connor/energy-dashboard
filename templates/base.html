@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Energy Dashboard{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span>Energy Dashboard</span>
+            <small>Market Analytics</small>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Markets</div>
+            <nav>
+                <a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                    European Power
+                </a>
+                <a href="/grid" class="{% if request.endpoint == 'grid' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    Irish Power
+                </a>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            Data: ENTSO-E · EirGrid
+        </div>
+    </aside>
+
+    <div class="content">
+        <div class="topbar">
+            <div class="topbar-left">
+                Markets &rsaquo; <span>{% block breadcrumb %}Overview{% endblock %}</span>
+            </div>
+            <div class="topbar-right">
+                <span><span class="status-dot"></span>Live</span>
+                <div class="divider"></div>
+                <span id="topbar-time"></span>
+            </div>
+        </div>
+        <div class="page">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+</div>
+<script>
+    function updateTime() {
+        const el = document.getElementById("topbar-time");
+        if (el) {
+            const now = new Date();
+            el.textContent = now.toUTCString().replace(" GMT", " UTC").slice(0, -4);
+        }
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

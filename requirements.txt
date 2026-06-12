@@ -1,0 +1,4 @@
+flask
+entsoe-py
+pandas
+python-dotenv
